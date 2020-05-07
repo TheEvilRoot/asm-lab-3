@@ -10,9 +10,9 @@ void overflow() {
 }
 
 // possible overflow situations:
-//  - sum
-//  - division
-//  - parsing
+//  - sum (fixed)
+//  - division (no, it's not)
+//  - parsing (fixed)
 
 struct result {
 	int ax;

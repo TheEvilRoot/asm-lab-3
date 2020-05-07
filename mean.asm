@@ -9,6 +9,25 @@
 	divisor_value dw 0
 	division_result_int dw 0
 	division_result_frac dw 0
+
+	numbers_count dw 0
+	numbers_array dw numbers_count dup (0)
+	numbers_sum dw 0
+
+	is_number_result dw 0
+	
+	buffer_max db 10
+	buffer_size db 0
+	buffer db buffer_max dup (0)
+	
+	parse_result dw 0
+	parse_success dw 0
+
+	print_int_value dw 0
+	print_int_sign_flag dw 0
+
+	print_float_int_value dw 0
+	print_float_frac_value dw 0
 .code
 
 zero_set macro
@@ -270,6 +289,257 @@ divide proc
 	pop ax
 	ret
 divide endp
+
+sum proc
+	push ax
+	push bx
+	push cx
+	push dx
+	push si
+
+	mov dx, 00h
+	mov si, offset numbers_array
+	mov cx, numbers_count
+	sum_for_loop:
+		push cx
+		mov ax, dx
+		call is_negative
+		push is_negative_result
+		mov ax, [si]
+		call is_negative
+		push is_negative_result
+		add ax, dx
+		call is_negative
+		pop ax
+		pop bx
+		xor ax, bx
+		cmp ax, 00h
+		jne sum_for_loop_no_overflow
+		xor bx, is_negative_result
+		cmp bx, 00h
+		je sum_for_loop_no_overflow
+		call overflow
+		sum_for_loop_no_overflow:
+		pop cx
+	loop sum_for_loop
+	mov numbers_sum, dx
+	pop si
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	ret
+sum endp
+
+mean proc
+	mov division_value, numbers_sum
+	mov divisor_value, numbers_count
+	call divide
+	mov numbers_mean_int, division_result_int
+	mov numbers_mean_frac, division_result_frac
+	ret
+mean endp
+
+is_number proc
+	cmp al, '0'
+	jl is_number_unset
+
+	cmp al, '9'
+	jg is_number_unset
+
+	jmp is_number_set
+
+	is_number_unset:
+	mov is_number_result, 00h
+	jmp is_number_ret
+
+	is_number_set:
+	mov is_number_set, 01h
+	jmp is_number_ret
+
+	is_number_ret:
+endp
+
+parse_negative_int proc
+	mov ax, 00h
+	parse_negative_int_for_loop:
+		push cx
+		push ax
+		mov dx, 00h
+		mov dl, [si]
+		call is_number
+		cmp is_number_result, 01h
+		jne parse_negative_int_invalid_char
+		sub dl, '0'
+		mov ax, dx
+		mov cx, 0ah
+		imul cx
+		mov dx, ax
+		pop ax
+		sub ax, dx
+		call is_negative
+		cmp is_negative_result, 01h
+		je parse_negative_for_loop_no_overflow
+		call overflow
+		parse_negative_for_loop_no_overflow:
+		pop cx
+	loop parse_negative_int_for_loop
+	mov parse_sucess, 01h
+	mov parse_result, ax
+	jmp prase_negative_int_ret
+
+	parse_negative_int_invalid_char:
+	mov parse_sucess, 00h
+	mov parse_result, 00h
+	jmp parse_negative_int_ret
+
+	parse_negative_int_ret:
+	ret
+parse_negative_int endp
+
+parse_int proc
+	pusha
+	mov si, offset buffer
+	mov cx, buffer_size
+
+	mov dx, 00h
+	mov dl, [si]
+	cmp dl, '-'
+	je parse_int_negative
+
+	mov ax, 00h
+	parse_int_for_loop:
+		push cx
+		push ax
+		mov dx, 00h
+		mov dl, [si]
+		call is_number
+		cmp is_number_result, 01h
+		jne parse_int_invalid_char
+		sub dl, '0'
+		mov ax, dx
+		mov cx, 0ah
+		imul cx
+		mov dx, ax
+		pop ax
+		add ax, dx
+		call is_negative
+		cmp is_negative_result, 00h
+		je parse_for_loop_no_overflow
+		call overflow
+		parse_for_loop_no_overflow:
+		pop cx
+	loop parse_int_for_loop
+	mov parse_success, 01h
+	mov parse_result, ax
+	jmp parse_int_ret
+
+	parse_int_negative:
+	inc si
+	dec cx
+	call parse_negative_int
+	jmp parse_int_ret
+
+	parse_int_invalid_char:
+	mov parse_success, 00h
+	mov parse_result, 00h
+	jmp parse_int_ret
+
+	parse_int_ret:
+	popa
+	ret
+parse_int endp
+
+read_buffer proc
+	pusha
+	mov dx, offset buffer_max
+	mov ah, 0ch
+	mov al, 0ah
+	int 21h
+	popa
+	ret
+endp
+
+print_char proc
+	pusha
+	mov ax, 00h
+	mov ah, 02h
+	int 21h
+	popa
+	ret
+print_char endp
+
+print_int proc
+	pusha
+	mov ax, print_int_value
+	call is_negative
+	mov cx, is_negative_result
+	and cx, print_int_sign_flag
+
+	cmp cx, 00h
+	jne print_int_set_minus
+	jmp print_int_start
+
+	print_int_set_minus:
+	mov dx, 00h
+	mov dl, '-'
+	call print_char
+	jmp print_int_start
+	
+	print_int_start:
+	mov dx, 00h
+	mov cx, 00h
+	print_int_while_loop:
+		mov bx, 0ah
+		call int_divide
+		push bx
+		call is_negative
+		cmp is_negative_result, 01h
+		je print_int_put_negative_int
+		
+		jmp print_int_put_int
+			
+		print_int_put_negative_int:
+		mov bx, ax
+		mov ax, 00h
+		sub ax, bx
+		jmp print_int_put_int
+
+		print_int_put_int:
+		add ax, '0'
+		mov dx, ax
+		pop bx
+		push dx
+		inc cx
+		mov ax, bx
+		call is_zero
+		cmp ax, 00h
+		je print_int_while_loop_end
+		jmp print_int_while_loop
+	print_int_while_loop_end:
+	print_int_put_from_stack:
+		pop dx
+		call put_char		
+	loop print_int_put_from_stack	
+	print_int_ret:
+	popa
+	ret
+print_int endp
+
+print_float proc
+	pusha
+	mov print_int_value, print_float_int_value
+	mov print_int_sign_flag, 01h
+	call print_int
+	mov dx, ','
+	call print_char
+	mov print_int_value, print_float_frac_value
+	mov print_int_sign_flag, 00h
+	call print_int
+	mov print_int_sign_flag, 01h
+	popa
+	ret
+print_float endp
 
 start:
 mov ax, @data

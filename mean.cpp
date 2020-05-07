@@ -207,7 +207,7 @@ void print_int(int value, int need_sign = true) {
 	std::stack<char> stack;
 	int count = 0;
 	while (true) {
-		auto [ax, bx] = divide(value, 10);
+		auto [ax, bx] = int_divide(value, 10);
 		value = ax;
 		if (is_negative(bx)) {
 			stack.push(0 - bx + '0');

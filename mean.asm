@@ -2,8 +2,8 @@
 .stack 100h
 .data
 	overflow_message db "Overflow occurred", 0Ah, 0Dh, '$'
-	is_negative_result db 0
-	is_zero_result	db 0
+	is_negative_result dw 0
+	is_zero_result	dw 0
 	
 	division_value dw 0
 	divisor_value dw 0
@@ -71,7 +71,7 @@ int_negative_divide proc
 		cmp cx, 00h
 		je int_negative_divide_for_loop_end
 		
-		inc dx
+		dec dx
 		add ax, bx
 		jmp int_negative_divide_for_loop
 	int_negative_divide_for_loop_end:
@@ -145,7 +145,7 @@ frac_negative_divide proc
 			pop ax 	
 			mov cx, is_negative_result
 			xor cx, 01h
-			or is_zero_result
+			or cx, is_zero_result
 			cmp cx, 01h
 			jne frac_negative_divide_while_end
 			push dx
@@ -167,7 +167,7 @@ frac_negative_divide proc
 			call is_zero
 			pop ax 	
 			mov cx, is_negative_result
-			or is_zero_result
+			or cx, is_zero_result
 			cmp cx, 01h
 			jne frac_negative_divide_add_loop_end
 			add ax, bx
@@ -276,7 +276,9 @@ mov ax, @data
 mov ds, ax
 mov es, ax
 main:
-
+mov division_value, 123
+mov divisor_value, 8
+call divide
 exit:
 mov ax, 4c00h
 int 21h

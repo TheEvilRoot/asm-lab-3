@@ -317,14 +317,15 @@ sum proc
 		pop ax
 		pop bx
 		xor ax, bx
+		pop cx
 		cmp ax, 00h
 		jne sum_for_loop_no_overflow
 		xor bx, is_negative_result
-		pop cx
 		cmp bx, 00h
 		je sum_for_loop_no_overflow
 		call overflow
 		sum_for_loop_no_overflow:
+		add si, 2
 	loop sum_for_loop
 	mov numbers_sum, dx
 	pop si
@@ -598,9 +599,6 @@ mov ax, @data
 mov ds, ax
 mov es, ax
 main:
-call read_buffer
-call parse_int
-jmp exit
 mov numbers_count, 03h
 call handle_input
 call sum

@@ -2,6 +2,8 @@
 .stack 100h
 .data
 	overflow_message db "Overflow occurred", 0Ah, 0Dh, '$'
+	new_line_message db 0Ah, 0Dh, '$'
+
 	is_negative_result dw 0
 	is_zero_result	dw 0
 	
@@ -40,6 +42,16 @@ endm
 zero_unset macro
 	mov is_zero_result, 00h
 endm
+
+new_line proc
+	pusha
+	mov dx, offset new_line_message
+	mov ax, 00h
+	mov ah, 09h
+	int 21h
+	popa
+	ret
+new_line endp
 
 overflow proc
 	mov dx, offset overflow_message
@@ -548,10 +560,31 @@ print_int endp
 
 print_float proc
 	pusha
+
+	mov ax, print_float_int_value
+	call is_negative
+
+	mov cx, is_negative_result
+
+	mov ax, print_float_frac_value
+	call is_negative
+
+	or cx, is_negative_result
+
+	cmp cx, 00h
+	jne print_float_minus
+	jmp print_float_continue
+
+	print_float_minus:
+	mov dx, '-'
+	call print_char
+	jmp print_float_continue
+
+	print_float_continue:
 	mov dx, print_float_int_value
 	mov print_int_value, dx
-	 
-	mov print_int_sign_flag, 01h
+	
+	mov print_int_sign_flag, 00h
 	call print_int
 	mov dx, ','
 	call print_char
@@ -560,6 +593,7 @@ print_float proc
 	mov print_int_value, dx
 	mov print_int_sign_flag, 00h
 	call print_int
+
 	mov print_int_sign_flag, 01h
 	popa
 	ret
@@ -588,6 +622,7 @@ handle_input proc
 		jmp handle_input_continue
 
 		handle_input_continue:
+		call new_line
 	loop handle_input_for_loop
 
 	popa
@@ -603,17 +638,19 @@ mov numbers_count, 03h
 call handle_input
 call sum
 call mean
+call new_line
 mov dx, numbers_sum
 mov print_int_value, dx
 mov print_int_sign_flag, 01h
 call print_int
-
+call new_line
 mov dx, numbers_mean_int
 mov print_float_int_value, dx
 
 mov dx, numbers_mean_frac
 mov print_float_frac_value, dx 
 call print_float
+call new_line
 exit:
 mov ax, 4c00h
 int 21h

@@ -465,12 +465,14 @@ parse_negative_int proc
 		mov cx, 0ah
 		push dx
 		imul cx
+		jo parse_negative_for_loop_overflow_occurred
 		pop dx
 		sub ax, dx
 		pop cx
 		call is_negative
 		cmp is_negative_result, 01h
 		je parse_negative_for_loop_no_overflow
+		parse_negative_for_loop_overflow_occurred:
 		call overflow
 		parse_negative_for_loop_no_overflow:
 		inc si
@@ -514,12 +516,14 @@ parse_int proc
 		mov cx, 0ah
 		push dx
 		imul cx
+		jo parse_for_loop_overflow_occurred
 		pop dx
 		add ax, dx
 		pop cx
 		call is_negative
 		cmp is_negative_result, 00h
 		je parse_for_loop_no_overflow
+		parse_for_loop_overflow_occurred:
 		call overflow
 		parse_for_loop_no_overflow:
 		inc si

@@ -14,6 +14,9 @@
 	numbers_array dw numbers_count dup (0)
 	numbers_sum dw 0
 
+	numbers_mean_int dw 0
+	numbers_mean_frac dw 0
+
 	is_number_result dw 0
 	
 	buffer_max db 10
@@ -309,6 +312,7 @@ sum proc
 		call is_negative
 		push is_negative_result
 		add ax, dx
+		mov dx, ax
 		call is_negative
 		pop ax
 		pop bx
@@ -316,11 +320,11 @@ sum proc
 		cmp ax, 00h
 		jne sum_for_loop_no_overflow
 		xor bx, is_negative_result
+		pop cx
 		cmp bx, 00h
 		je sum_for_loop_no_overflow
 		call overflow
 		sum_for_loop_no_overflow:
-		pop cx
 	loop sum_for_loop
 	mov numbers_sum, dx
 	pop si
@@ -332,19 +336,31 @@ sum proc
 sum endp
 
 mean proc
-	mov division_value, numbers_sum
-	mov divisor_value, numbers_count
+	push dx
+	
+	mov dx, numbers_sum
+	mov division_value, dx
+
+	mov dx, numbers_count
+	mov divisor_value, dx
+
 	call divide
-	mov numbers_mean_int, division_result_int
-	mov numbers_mean_frac, division_result_frac
+	
+	mov dx, division_result_int
+	mov numbers_mean_int, dx
+
+	mov dx, division_result_frac
+	mov numbers_mean_frac, dx
+	
+	pop dx
 	ret
 mean endp
 
 is_number proc
-	cmp al, '0'
+	cmp dl, '0'
 	jl is_number_unset
 
-	cmp al, '9'
+	cmp dl, '9'
 	jg is_number_unset
 
 	jmp is_number_set
@@ -354,42 +370,42 @@ is_number proc
 	jmp is_number_ret
 
 	is_number_set:
-	mov is_number_set, 01h
+	mov is_number_result, 01h
 	jmp is_number_ret
 
 	is_number_ret:
+	ret
 endp
 
 parse_negative_int proc
 	mov ax, 00h
 	parse_negative_int_for_loop:
-		push cx
-		push ax
 		mov dx, 00h
 		mov dl, [si]
 		call is_number
 		cmp is_number_result, 01h
 		jne parse_negative_int_invalid_char
+		push cx
 		sub dl, '0'
-		mov ax, dx
 		mov cx, 0ah
+		push dx
 		imul cx
-		mov dx, ax
-		pop ax
+		pop dx
 		sub ax, dx
+		pop cx
 		call is_negative
 		cmp is_negative_result, 01h
 		je parse_negative_for_loop_no_overflow
 		call overflow
 		parse_negative_for_loop_no_overflow:
-		pop cx
+		inc si
 	loop parse_negative_int_for_loop
-	mov parse_sucess, 01h
+	mov parse_success, 01h
 	mov parse_result, ax
-	jmp prase_negative_int_ret
+	jmp parse_negative_int_ret
 
 	parse_negative_int_invalid_char:
-	mov parse_sucess, 00h
+	mov parse_success, 00h
 	mov parse_result, 00h
 	jmp parse_negative_int_ret
 
@@ -400,7 +416,8 @@ parse_negative_int endp
 parse_int proc
 	pusha
 	mov si, offset buffer
-	mov cx, buffer_size
+	mov cx, 00h
+	mov cl, buffer_size
 
 	mov dx, 00h
 	mov dl, [si]
@@ -409,26 +426,28 @@ parse_int proc
 
 	mov ax, 00h
 	parse_int_for_loop:
-		push cx
-		push ax
 		mov dx, 00h
 		mov dl, [si]
 		call is_number
 		cmp is_number_result, 01h
 		jne parse_int_invalid_char
+		; multiply ax by 10
+		; and add dl to it
+		; why the fuck am i multiplying dx by 10???
+		push cx
 		sub dl, '0'
-		mov ax, dx
 		mov cx, 0ah
+		push dx
 		imul cx
-		mov dx, ax
-		pop ax
+		pop dx
 		add ax, dx
+		pop cx
 		call is_negative
 		cmp is_negative_result, 00h
 		je parse_for_loop_no_overflow
 		call overflow
 		parse_for_loop_no_overflow:
-		pop cx
+		inc si
 	loop parse_int_for_loop
 	mov parse_success, 01h
 	mov parse_result, ax
@@ -519,7 +538,7 @@ print_int proc
 	print_int_while_loop_end:
 	print_int_put_from_stack:
 		pop dx
-		call put_char		
+		call print_char 
 	loop print_int_put_from_stack	
 	print_int_ret:
 	popa
@@ -528,12 +547,16 @@ print_int endp
 
 print_float proc
 	pusha
-	mov print_int_value, print_float_int_value
+	mov dx, print_float_int_value
+	mov print_int_value, dx
+	 
 	mov print_int_sign_flag, 01h
 	call print_int
 	mov dx, ','
 	call print_char
-	mov print_int_value, print_float_frac_value
+	
+	mov dx, print_float_frac_value
+	mov print_int_value, dx
 	mov print_int_sign_flag, 00h
 	call print_int
 	mov print_int_sign_flag, 01h
@@ -541,14 +564,58 @@ print_float proc
 	ret
 print_float endp
 
+handle_input proc
+	pusha
+	mov cx, numbers_count
+	mov si, offset numbers_array
+	
+	handle_input_for_loop:
+		call read_buffer
+		call parse_int
+		cmp parse_success, 01h
+		je handle_input_success:
+		jne handle_input_failed
+
+		handle_input_success:
+		mov ax, parse_result
+		mov [si], ax
+		add si, 2
+		jmp handle_input_continue
+
+		handle_input_failed:
+		int 3h
+		jmp handle_input_continue
+
+		handle_input_continue:
+	loop handle_input_for_loop
+
+	popa
+	ret
+handle_input endp
+
 start:
 mov ax, @data
 mov ds, ax
 mov es, ax
 main:
-mov division_value, 123
-mov divisor_value, 8
-call divide
+call read_buffer
+call parse_int
+jmp exit
+mov numbers_count, 03h
+call handle_input
+call sum
+call mean
+mov dx, numbers_sum
+mov print_int_value, dx
+mov print_int_sign_flag, 01h
+call print_int
+
+mov dx, numbers_mean_int
+mov print_float_int_value, dx
+
+mov dx, numbers_mean_frac
+mov print_float_frac_value, dx 
+call print_float
 exit:
 mov ax, 4c00h
 int 21h

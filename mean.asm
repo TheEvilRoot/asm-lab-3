@@ -391,7 +391,7 @@ sum proc
 		xor bx, is_negative_result
 		cmp bx, 00h
 		je sum_for_loop_no_overflow
-		call overflow
+		call overflow ; when sum overflow occurrs just terminate
 		sum_for_loop_no_overflow:
 		add si, 2
 	loop sum_for_loop
@@ -472,8 +472,12 @@ parse_negative_int proc
 		call is_negative
 		cmp is_negative_result, 01h
 		je parse_negative_for_loop_no_overflow
+		jne parse_negative_for_loop_overflow_occurred_im
 		parse_negative_for_loop_overflow_occurred:
-		call overflow
+		pop dx
+		pop cx
+		parse_negative_for_loop_overflow_occurred_im:
+		jmp parse_negative_int_invalid_char
 		parse_negative_for_loop_no_overflow:
 		inc si
 	loop parse_negative_int_for_loop
@@ -523,8 +527,12 @@ parse_int proc
 		call is_negative
 		cmp is_negative_result, 00h
 		je parse_for_loop_no_overflow
+		jne parse_for_loop_overflow_occurred_im 
 		parse_for_loop_overflow_occurred:
-		call overflow
+		pop dx
+		pop cx
+		parse_for_loop_overflow_occurred_im:
+		jmp parse_int_invalid_char ; was call overflow
 		parse_for_loop_no_overflow:
 		inc si
 	loop parse_int_for_loop

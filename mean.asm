@@ -6,7 +6,7 @@
 	new_line_message db 0Ah, 0Dh, '$'
 	invalid_value_message db "Invalid value. Try again...", 0Ah, 0Dh, '$'
 	count_prompt_message db "Enter count of elements: ", '$'
-	count_invalid_message db "Count must be in range (0, 32]", 0Ah, 0Dh, '$'
+	count_invalid_message db "Count must be in range (0, 30]", 0Ah, 0Dh, '$'
 	array_prompt_start db "Enter ", '$'
 	array_prompt_end db " numbers: ", 0Ah, 0Dh, '$'
 	mean_message db "Mean value = ", '$'
@@ -716,7 +716,7 @@ is_count_valid proc
 	cmp ax, 00h
 	je is_count_valid_invalid
 
-	cmp ax, 20h
+	cmp ax, 30
 	jg is_count_valid_invalid
 
 	jmp is_count_valid_ok

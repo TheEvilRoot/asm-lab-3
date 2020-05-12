@@ -1,3 +1,4 @@
+.286
 .model small
 .stack 100h
 .data
@@ -22,7 +23,7 @@
 	numbers_count_valid dw 0
 
 	numbers_count dw 0
-	numbers_array dw numbers_count dup (0)
+	numbers_array dw 30 dup (0)
 	numbers_sum dw 0
 
 	numbers_mean_int dw 0
@@ -32,7 +33,7 @@
 	
 	buffer_max db 10
 	buffer_size db 0
-	buffer db buffer_max dup (0)
+	buffer db 10 dup (0)
 	
 	parse_result dw 0
 	parse_success dw 0
@@ -683,7 +684,7 @@ handle_input proc
 		call parse_int
 		call new_line
 		cmp parse_success, 01h
-		je handle_input_success:
+		je handle_input_success
 		jne handle_input_failed
 
 		handle_input_success:
